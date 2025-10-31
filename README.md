@@ -231,8 +231,7 @@ graph LR
 ### Step 1: Prerequisites
 ```bash
 # Install required tools
-brew install terraform awscli  # macOS
-# or
+
 apt-get install terraform awscli  # Linux
 
 # Configure AWS credentials
