@@ -1,2 +1,201 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudWatch Alarms for Multi-Region DR System'
 
-dy
+Parameters:
+  SNSTopicArn:
+    Type: String
+    Description: ARN of SNS topic for alarm notifications
+  
+  DynamoDBTableName:
+    Type: String
+    Default: dr-application-data
+    Description: DynamoDB table name
+  
+  LambdaFunctionName:
+    Type: String
+    Description: Lambda function name to monitor
+
+Resources:
+  # Lambda Error Alarm
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${LambdaFunctionName}-errors'
+      AlarmDescription: Alert when Lambda function has errors
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref LambdaFunctionName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  # Lambda Throttle Alarm
+  LambdaThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${LambdaFunctionName}-throttles'
+      AlarmDescription: Alert when Lambda function is throttled
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref LambdaFunctionName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  # Lambda Duration Alarm
+  LambdaDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${LambdaFunctionName}-duration'
+      AlarmDescription: Alert when Lambda duration is high
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 25000
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref LambdaFunctionName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  # DynamoDB Read Throttle Alarm
+  DynamoDBReadThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${DynamoDBTableName}-read-throttles'
+      AlarmDescription: Alert on DynamoDB read throttling
+      MetricName: ReadThrottleEvents
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref DynamoDBTableName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  # DynamoDB Write Throttle Alarm
+  DynamoDBWriteThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${DynamoDBTableName}-write-throttles'
+      AlarmDescription: Alert on DynamoDB write throttling
+      MetricName: WriteThrottleEvents
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref DynamoDBTableName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  # DynamoDB System Errors Alarm
+  DynamoDBSystemErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${DynamoDBTableName}-system-errors'
+      AlarmDescription: Alert on DynamoDB system errors
+      MetricName: SystemErrors
+      Namespace: AWS/DynamoDB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref DynamoDBTableName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  # Custom Metric - Replication Lag
+  ReplicationLagAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: replication-lag-high
+      AlarmDescription: Alert when replication lag exceeds threshold
+      MetricName: ReplicationLag
+      Namespace: DR-System
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5000
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  # Custom Metric - Data Consistency Score
+  DataConsistencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: data-consistency-low
+      AlarmDescription: Alert when data consistency score is low
+      MetricName: DataConsistencyScore
+      Namespace: DR-System
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 95
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  # Custom Metric - Health Check Status
+  HealthCheckAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: health-check-failed
+      AlarmDescription: Alert when health checks fail
+      MetricName: HealthCheckStatus
+      Namespace: DR-System
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: breaching
+
+Outputs:
+  LambdaErrorAlarmName:
+    Description: Lambda Error Alarm Name
+    Value: !Ref LambdaErrorAlarm
+
+  DynamoDBReadThrottleAlarmName:
+    Description: DynamoDB Read Throttle Alarm Name
+    Value: !Ref DynamoDBReadThrottleAlarm
+
+  ReplicationLagAlarmName:
+    Description: Replication Lag Alarm Name
+    Value: !Ref ReplicationLagAlarm
