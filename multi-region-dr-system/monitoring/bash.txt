@@ -1,0 +1,8 @@
+aws cloudformation deploy \
+  --template-file monitoring/cloudwatch-alarms.yaml \
+  --stack-name dr-monitoring \
+  --parameter-overrides \
+    SNSTopicArn=arn:aws:sns:region:account:topic \
+    DynamoDBTableName=dr-application-data \
+    LambdaFunctionName=traffic-router-mumbai \
+  --region ap-south-1
