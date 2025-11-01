@@ -263,3 +263,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+#pip3 install boto3 requests
